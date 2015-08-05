@@ -9,9 +9,8 @@ Gem::Specification.new do |spec|
   spec.authors       = ["John Slee"]
   spec.email         = ["john.slee@fairfaxmedia.com.au"]
 
-  spec.summary       = %q{TODO: Write a short summary, because Rubygems requires one.}
-  spec.description   = %q{TODO: Write a longer description or delete this line.}
-  spec.homepage      = "TODO: Put your gem's website or public repo URL here."
+  spec.summary       = %q{CLI tool for ad-hoc AWS "find X" tasks.}
+  spec.homepage      = "https://github.com/ffxjslee/awsfinder"
   spec.license       = "MIT"
 
   # Prevent pushing this gem to RubyGems.org by setting 'allowed_push_host', or
