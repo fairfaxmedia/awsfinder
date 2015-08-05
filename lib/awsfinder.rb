@@ -17,31 +17,19 @@ module AWSFinder
       type: :string,
       default: ENV['AWS_REGION'],
       desc: 'AWS region to use'
+
     def initialize(*args)
       super
-      begin
-        use_credentials if options[:key].length > 1
-        @iam = Aws::IAM::Client.new(region: options[:region])
-        Thread.abort_on_exception = true
-        @logger = Logger.new(options[:log] || STDOUT)
-        @failures = Array.new
-        @stats = {
-          :files  => 0,
-          :puts   => 0,
-          :copies => 0,
-          :bytes  => 0,
-        }
-      rescue Aws::Errors::ServiceError => e
-        print "AWS exception: #{e.message}\n"
-      end
+      use_credentials if options[:key].length > 1
     end
 
     desc 'find_access_key_owner KEYID', 'attempt to find IAM user with access key KEYID'
     def find_access_key_owner(key)
       # is there a less-nesty way to do this?
-      @iam.list_users.each do |uresp|
+      iam = Aws::IAM::Client.new(region: options[:region])
+      iam.list_users.each do |uresp|
         uresp.users.map(&:user_name).each do |u|
-          access_keys = @iam.list_access_keys({user_name: u }).each do |aresp|
+          access_keys = iam.list_access_keys({user_name: u }).each do |aresp|
             aresp.access_key_metadata.map(&:access_key_id).each do |akid|
               if akid == key then
                 puts "#{u} owns access key ID #{key}"
@@ -52,6 +40,22 @@ module AWSFinder
         end
       end
       puts "could not find an owner for access key ID #{key}"
+      return 1
+    end
+
+    desc 'find_active_stacks REGEX', 'list CloudFormation stacks matching REGEX with no deletion time set'
+    def find_active_stacks(regex)
+      cfn = Aws::CloudFormation::Client.new(region: options[:region])
+      stacks = Array.new
+      cfn.list_stacks.each do |response|
+        response.stack_summaries.each do |x|
+          stacks << x if x.stack_name =~ /#{regex}/ && x.deletion_time == nil
+        end
+      end
+      if stacks.length > 0
+        puts stacks.map(&:stack_name).sort
+        return 0
+      end
       return 1
     end
 
