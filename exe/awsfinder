@@ -1,0 +1,5 @@
+#!/usr/bin/env ruby
+
+require 'awsfinder'
+
+AWSFinder::AWSFinder.start(ARGV)
