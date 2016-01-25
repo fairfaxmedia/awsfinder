@@ -45,13 +45,7 @@ module AWSFinder
 
     desc 'find_active_stacks REGEX', 'list CloudFormation stacks matching REGEX with no deletion time set'
     def find_active_stacks(regex)
-      cfn = Aws::CloudFormation::Client.new(region: options[:region])
-      stacks = Array.new
-      cfn.list_stacks.each do |response|
-        response.stack_summaries.each do |x|
-          stacks << x if x.stack_name =~ /#{regex}/ && x.deletion_time == nil
-        end
-      end
+      stacks = _find_active_stacks(regex)
       if stacks.length > 0
         puts stacks.map(&:stack_name).sort
         return 0
@@ -59,7 +53,33 @@ module AWSFinder
       return 1
     end
 
+    desc 'download_active_stack_templates REGEX', 'download and save JSON templates for all active Cloudformation stacks'
+    def download_active_stack_templates(regex)
+      stacks = _find_active_stacks(regex)
+      stacks.each do |summary|
+        response = _cfn.get_template({stack_name: summary.stack_name})
+        body = response.template_body
+        filename = "#{summary.stack_name}.json"
+        File.open(filename,"w") { |fd| fd.write(body) }
+        puts "wrote #{filename}"
+      end
+    end
+
   private
+    def _cfn
+      Aws::CloudFormation::Client.new(region: options[:region])
+    end
+
+    def _find_active_stacks(regex)
+      stacks = Array.new
+      _cfn.list_stacks.each do |response|
+        response.stack_summaries.each do |x|
+          stacks << x if x.stack_name =~ /#{regex}/ && x.deletion_time == nil
+        end
+      end
+      stacks
+    end
+
     def use_credentials
       Aws.config.update({
         region: options[:region],
