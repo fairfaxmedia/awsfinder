@@ -57,7 +57,7 @@ module AWSFinder
     def download_active_stack_templates(regex)
       stacks = _find_active_stacks(regex)
       stacks.each do |summary|
-        response = _cfn.get_template({stack_name: summary.stack_name})
+        response = _cloudformation.get_template({stack_name: summary.stack_name})
         body = response.template_body
         filename = "#{summary.stack_name}.json"
         File.open(filename,"w") { |fd| fd.write(body) }
@@ -65,14 +65,59 @@ module AWSFinder
       end
     end
 
+    desc 'find_stack_amis STACK', 'discover all AMIs referenced in a CloudFormation stack'
+    def find_stack_amis(stack)
+      resources = _cloudformation.describe_stack_resources({stack_name: stack})
+      resources.stack_resources.each do |r|
+        begin
+          if r.resource_type == "AWS::AutoScaling::LaunchConfiguration"
+            launchconfig = _autoscaling.describe_launch_configurations({
+              launch_configuration_names: [ r.physical_resource_id ],
+              max_records: 1
+            })
+            image_id = launchconfig[0][0].image_id
+            puts "#{stack}: found active launchconfig #{r.physical_resource_id} with AMI #{image_id} (#{_ami_name(image_id)})"
+          elsif r.resource_type == "AWS::EC2::Instance"
+            instances = _ec2.describe_instances({instance_ids: [r.physical_resource_id]})
+            image_id = instances.reservations.first.instances.first.image_id
+            puts "#{stack}: found active non-autoscale instance #{r.physical_resource_id} with AMI #{image_id} (#{_ami_name(image_id)})"
+          end
+        rescue Exception => e
+          puts "#{stack}: error interrogating #{r.resource_type} #{r.physical_resource_id}: #{e}"
+        end
+      end
+    end
+
+    desc 'find_all_stack_amis REGEXC', 'like find_stack_amis but across all available CloudFormation stacks matching REGEX'
+    def find_all_stack_amis(regex)
+      stacks = _find_active_stacks(regex)
+      stacks.each do |summary|
+        find_stack_amis(summary.stack_name)
+        # be cautious to avoid rate limiting
+      end
+    end
+
   private
-    def _cfn
-      Aws::CloudFormation::Client.new(region: options[:region])
+    def _cloudformation
+      Aws::CloudFormation::Client.new({region: options[:region], retry_limit: 8})
+    end
+
+    def _autoscaling
+      Aws::AutoScaling::Client.new({region: options[:region], retry_limit: 8})
+    end
+
+    def _ec2
+      Aws::EC2::Client.new({region: options[:region], retry_limit: 8})
+    end
+
+    def _ami_name(image_id)
+      amis = _ec2.describe_images({image_ids: [ image_id ]})
+      amis.first.images.first.name
     end
 
     def _find_active_stacks(regex)
       stacks = Array.new
-      _cfn.list_stacks.each do |response|
+      _cloudformation.list_stacks.each do |response|
         response.stack_summaries.each do |x|
           stacks << x if x.stack_name =~ /#{regex}/ && x.deletion_time == nil
         end
