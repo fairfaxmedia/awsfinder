@@ -1,6 +1,6 @@
 # Awsfinder
 
-Quick CLI tool for various "quickly find X" ad-hoc tasks in AWS.
+Quick CLI tool for various "quickly find X" and general ad-hoc audit/discovery tasks in AWS.
 
 ## Installation
 
@@ -8,7 +8,14 @@ Quick CLI tool for various "quickly find X" ad-hoc tasks in AWS.
 
 ## Usage
 
-    $ awsfinder find_access_key_id AKIAoiuhewfiuhwefhuiwefh
+    $ bundle exec exe/awsfinder help
+    Commands:
+      awsfinder download_active_stack_templates REGEX  # download and save JSON templates for all active Cloudformation stacks
+      awsfinder find_access_key_owner KEYID            # attempt to find IAM user with access key KEYID
+      awsfinder find_active_stacks REGEX               # list CloudFormation stacks matching REGEX with no deletion time set
+      awsfinder find_all_stack_amis REGEX              # like find_stack_amis but across all available CloudFormation stacks matching REGEX
+      awsfinder find_stack_amis STACK                  # discover all AMIs referenced in a CloudFormation stack
+      awsfinder help [COMMAND]                         # Describe available commands or one specific command
 
 ## Development
 
