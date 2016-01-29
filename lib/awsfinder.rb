@@ -88,7 +88,7 @@ module AWSFinder
       end
     end
 
-    desc 'find_all_stack_amis REGEXC', 'like find_stack_amis but across all available CloudFormation stacks matching REGEX'
+    desc 'find_all_stack_amis REGEX', 'like find_stack_amis but across all available CloudFormation stacks matching REGEX'
     def find_all_stack_amis(regex)
       stacks = _find_active_stacks(regex)
       stacks.each do |summary|
