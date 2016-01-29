@@ -76,11 +76,11 @@ module AWSFinder
               max_records: 1
             })
             image_id = launchconfig[0][0].image_id
-            puts "#{stack}: found active launchconfig #{r.physical_resource_id} with AMI #{image_id} (#{_ami_name(image_id)})"
+            puts "#{stack}: found active launchconfig #{r.physical_resource_id} with AMI #{_format_ami(image_id)}"
           elsif r.resource_type == "AWS::EC2::Instance"
             instances = _ec2.describe_instances({instance_ids: [r.physical_resource_id]})
             image_id = instances.reservations.first.instances.first.image_id
-            puts "#{stack}: found active non-autoscale instance #{r.physical_resource_id} with AMI #{image_id} (#{_ami_name(image_id)})"
+            puts "#{stack}: found active non-autoscale instance #{r.physical_resource_id} with AMI #{_format_ami(image_id)}"
           end
         rescue Exception => e
           puts "#{stack}: error interrogating #{r.resource_type} #{r.physical_resource_id}: #{e}"
@@ -99,20 +99,35 @@ module AWSFinder
 
   private
     def _cloudformation
-      Aws::CloudFormation::Client.new({region: options[:region], retry_limit: 8})
+      @_cfn ||= Aws::CloudFormation::Client.new({region: options[:region], retry_limit: 8})
+      @_cfn
     end
 
     def _autoscaling
-      Aws::AutoScaling::Client.new({region: options[:region], retry_limit: 8})
+      @_autoscaling ||= Aws::AutoScaling::Client.new({region: options[:region], retry_limit: 8})
+      @_autoscaling
     end
 
     def _ec2
-      Aws::EC2::Client.new({region: options[:region], retry_limit: 8})
+      @_ec2 ||= Aws::EC2::Client.new({region: options[:region], retry_limit: 8})
+      @_ec2
     end
 
-    def _ami_name(image_id)
-      amis = _ec2.describe_images({image_ids: [ image_id ]})
-      amis.first.images.first.name
+    def _ami(image_id)
+      unless @ami_cache[image_id]
+        amis = _ec2.describe_images({image_ids: [ image_id ]})
+        @ami_cache[image_id] = amis.first.images.first
+      end
+      @ami_cache[image_id]
+    end
+
+    def _format_ami(image_id)
+      ami = _ami(image_id)
+      "#{image_id} created #{_ami_age(image_id)} days ago (#{ami.name})"
+    end
+
+    def _ami_age(image_id)
+      (DateTime.now - DateTime.parse(_ami(image_id).creation_date)).to_i
     end
 
     def _find_active_stacks(regex)
@@ -123,6 +138,11 @@ module AWSFinder
         end
       end
       stacks
+    end
+
+    def initialize(*args)
+      super
+      @ami_cache = Hash.new
     end
 
     def use_credentials
