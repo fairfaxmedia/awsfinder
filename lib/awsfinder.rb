@@ -7,11 +7,9 @@ module AWSFinder
   class AWSFinder < Thor
     class_option :key,
       type: :string,
-      default: ENV['AWS_ACCESS_KEY_ID'],
       desc: 'AWS access key ID to use, if required'
     class_option :secret,
       type: :string,
-      default: ENV['AWS_SECRET_ACCESS_KEY'],
       desc: 'AWS access key secret to use, if required'
     class_option :region,
       type: :string,
