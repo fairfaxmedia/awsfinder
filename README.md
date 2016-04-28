@@ -8,7 +8,7 @@ Quick CLI tool for various "quickly find X" and general ad-hoc audit/discovery t
 
 ## Usage
 
-    $ bundle exec exe/awsfinder help
+    $ awsfinder help
     Commands:
       awsfinder download_active_stack_templates REGEX  # download and save JSON templates for all active Cloudformation stacks
       awsfinder find_access_key_owner KEYID            # attempt to find IAM user with access key KEYID
